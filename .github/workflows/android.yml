@@ -1,0 +1,58 @@
+name: Time-ikiz APK Build (SMS-free)
+on:
+  push:
+    branches: [feature/ilet-e2ee-pilot]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Android integration sources
+        run: python3 tools/verify_time_ikiz_sources.py
+      - name: Check Python relay syntax
+        run: python3 -m compileall -q relay
+      - name: Test relay message signatures and protocol compatibility
+        run: |
+          python3 -m pip install -r relay/requirements.txt
+          cd relay
+          python3 -m unittest -v test_signatures test_server test_protocol
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)
+          fi
+          test -n "$SDKMANAGER" && test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build debug APK
+        run: |
+          mkdir -p output
+          set -o pipefail
+          gradle --no-daemon --stacktrace assembleDebug --console=plain 2>&1 | tee output/build.log
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Time-ikiz-Build-Log
+          path: output/build.log
+          if-no-files-found: ignore
+      - name: Name APK
+        run: |
+          mkdir -p output
+          cp app/build/outputs/apk/debug/app-debug.apk output/Time-ikiz.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Time-ikiz-APK
+          path: output/Time-ikiz.apk
+          if-no-files-found: error
