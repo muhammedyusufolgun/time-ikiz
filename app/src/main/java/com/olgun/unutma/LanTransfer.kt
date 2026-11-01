@@ -110,8 +110,8 @@ object LanTransfer {
     if(currentIp!=peer(c))check(prefs(c).edit().putString("peer",currentIp).commit())
     if(data.optString("type")=="instant"){
      val instantText=data.getString("text")
-     InstantMessage.add(c,instantText)
-     try{c.startForegroundService(android.content.Intent(c,SpeechService::class.java).putExtra("message",instantText).putExtra("id",-1))}catch(e:Exception){Log.w("TimeIkizLAN","Instant speech start failed",e)}
+     val isNew=InstantMessage.add(c,instantText)
+     if(isNew)try{c.startForegroundService(android.content.Intent(c,SpeechService::class.java).putExtra("message",instantText).putExtra("id",-1))}catch(e:Exception){Log.w("TimeIkizLAN","Instant speech start failed",e)}
      socket.getOutputStream().write("OK\n".toByteArray(Charsets.UTF_8))
      return
     }
