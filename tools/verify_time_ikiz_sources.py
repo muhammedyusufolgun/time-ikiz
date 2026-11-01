@@ -29,7 +29,7 @@ check(root/"app/build.gradle.kts", "org.bouncycastle:bcprov", "Ed25519 dependenc
 check(root/"app/src/main/AndroidManifest.xml", "android.permission.INTERNET", "Internet permission missing")
 # Guard against canceling a scheduled alarm before an edited reminder is durable.
 activity = (src / "MainActivity.kt").read_text(encoding="utf-8")
-save_pos = activity.find("Store.save(this,items);Alarms.cancel(this,id);if(id !in Store.incomingIds(this))Alarms.plan(this,r);")
+save_pos = activity.find("Store.save(this,items);Alarms.cancel(this,id);if(id !in Store.sentIds(this))Alarms.plan(this,r);")
 if save_pos < 0:
     errors.append("Reminder edit must persist before canceling/replanning its alarm")
 check(src/"InternetMessaging.kt", "Inbox item $i failed; retry on next sync", "Inbox failure isolation missing")
