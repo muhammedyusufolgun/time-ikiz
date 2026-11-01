@@ -131,17 +131,19 @@ object LanTransfer {
   }
  }
  fun send(c:Context,r:Reminder):String {
-  val ip=LanDiscovery.pairedIp(c)?:peer(c);require(ip.isNotBlank()){"Önce alıcıyı eşleştirin"}
+  var ip=LanDiscovery.pairedIp(c)
+  if(ip==null){LanDiscovery.discover(c);repeat(6){Thread.sleep(500);ip=LanDiscovery.pairedIp(c);if(ip!=null)return@repeat}}
+  val target=ip?:peer(c);require(target.isNotBlank()){"Önce alıcıyı eşleştirin"}
   val token=prefs(c).getString("peer_code",null)?:error("Eşleştirme kodu eksik")
   val plain=JSONObject().put("id",UUID.randomUUID().toString())
    .put("time",r.time).put("repeat",r.repeat).put("text",r.text).toString()
   val payload=encrypt(token,plain).toString()
   Socket().use { socket ->
-   socket.connect(java.net.InetSocketAddress(ip,PORT),5000);socket.soTimeout=6000
+   socket.connect(java.net.InetSocketAddress(target,PORT),5000);socket.soTimeout=6000
    socket.getOutputStream().write((payload+"\n").toByteArray(Charsets.UTF_8))
    val reply=socket.getInputStream().bufferedReader(Charsets.UTF_8).readLine()
    check(reply=="OK"){"Alıcı aktarımı kabul etmedi"}
-   if(ip!=peer(c))check(prefs(c).edit().putString("peer",ip).commit())
+   if(target!=peer(c))check(prefs(c).edit().putString("peer",target).commit())
   }
   return "Hatırlatma aynı ağdaki telefona aktarıldı"
  }
