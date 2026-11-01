@@ -1,4 +1,4 @@
-name: Time-ikiz APK Build (SMS-free)
+name: Time-ikiz APK Build (LAN-only)
 on:
   push:
     branches: [main]
