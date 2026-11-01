@@ -169,7 +169,7 @@ object InternetMessaging {
     val d=decrypt(ciphertext);val text=d.getString("text");val time=d.getLong("time")
     require(text.length<=10000 && time>0)
     val reminder=Store.addIncomingAtomic(c,id,time,text,d.getBoolean("repeat"))
-    if(reminder!=null){IncomingNotice.show(c,reminder);count++}
+    if(reminder!=null){Alarms.plan(c,reminder);count++}
    }
    req(c,"/ack",JSONObject().put("message_id",id))
    } catch(e:Exception) {
