@@ -92,7 +92,8 @@ class MainActivity:Activity(){
   }
  }
  override fun onResume(){super.onResume();startLanService();try{Store.reconcileAlarms(this)}catch(e:Exception){android.util.Log.e("TimeIkizAlarm","Resume alarm reconciliation failed",e)};refreshTask?.let{handler.removeCallbacks(it)};val tick=object:Runnable{override fun run(){render();handler.postDelayed(this,500)}};refreshTask=tick;handler.post(tick)}
- override fun onPause(){refreshTask?.let{handler.removeCallbacks(it)};refreshTask=null;super.onPause()}\n override fun onStop(){LanDiscovery.stop(applicationContext);LanTransfer.stop();super.onStop()}
+ override fun onPause(){refreshTask?.let{handler.removeCallbacks(it)};refreshTask=null;super.onPause()}
+ override fun onStop(){LanDiscovery.stop(applicationContext);LanTransfer.stop();super.onStop()}
 
  private fun startLanService(){
   try{
