@@ -12,6 +12,10 @@ object LanDiscovery {
  private var registration: NsdManager.RegistrationListener? = null
  private var discovery: NsdManager.DiscoveryListener? = null
  private val devices=java.util.concurrent.ConcurrentHashMap<String,String>()
+ fun pairedIp(context:Context):String? {
+  val id=LanTransfer.peerIdentity(context)
+  return if(id.isBlank())null else devices.entries.firstOrNull{it.key==id}?.value
+ }
  fun nearby():List<Pair<String,String>> = devices.entries.map{it.key to it.value}.sortedBy{it.first}
  @Synchronized fun stop(context:Context){
   val manager=context.applicationContext.getSystemService(Context.NSD_SERVICE) as NsdManager
@@ -48,7 +52,7 @@ object LanDiscovery {
   if(registration!=null)return
   val manager=context.applicationContext.getSystemService(Context.NSD_SERVICE) as NsdManager
   val info=NsdServiceInfo().apply {
-   serviceName="Time-ikiz"
+   serviceName=LanTransfer.localIdentity(context)
    serviceType=SERVICE_TYPE
    port=39471
   }
