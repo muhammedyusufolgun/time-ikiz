@@ -13,6 +13,7 @@ import java.util.*
 class MainActivity:Activity(){
  private lateinit var root:LinearLayout;private lateinit var list:LinearLayout;private lateinit var input:EditText;private lateinit var date:EditText;private lateinit var time:EditText;private lateinit var done:Button;private lateinit var mode:TextView
  private val handler=Handler(Looper.getMainLooper());private var refreshTask:Runnable?=null
+ @Volatile private var instantSending=false
  private var editing:Int?=null;private var dateChosen=false;private var timeChosen=false
  private val fmt=SimpleDateFormat("dd.MM.yyyy",Locale("tr","TR"));private val clock=SimpleDateFormat("HH:mm",Locale("tr","TR"))
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
@@ -183,12 +184,15 @@ class MainActivity:Activity(){
    }.setNegativeButton("Vazgeç",null).show()
  }
  private fun sendInstantMessage(){
+  if(instantSending)return
   val text=input.text.toString().trim()
   if(text.isBlank()){Toast.makeText(this,"Önce sesli mesajı yazın",Toast.LENGTH_LONG).show();return}
   if(!LanTransfer.isPaired(this)){Toast.makeText(this,"Önce telefonları eşleştirin",Toast.LENGTH_LONG).show();return}
+  instantSending=true
   Thread{
    val result=try{LanTransfer.sendInstant(this,text)}catch(e:Exception){"Anlık iletim hatası: "+(e.message?:"Bağlantı yok")}
    runOnUiThread{
+    instantSending=false
     if(result=="Anlık mesaj iletildi"){InstantMessage.add(this,text);input.text.clear();render()}
     Toast.makeText(this,result,Toast.LENGTH_LONG).show()
    }
