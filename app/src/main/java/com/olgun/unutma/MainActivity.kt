@@ -174,34 +174,14 @@ class MainActivity:Activity(){
    }.setNegativeButton("Vazgeç",null).show()
  }
  private fun sendDialog(r:Reminder){
-  val options=mutableListOf<String>()
-  if(LanTransfer.isPaired(this))options.add("Yerel Wi-Fi ile gönder")
-  if(InternetMessaging.configured(this))options.add("İnternet üzerinden gönder")
-  options.add("İptal")
-  AlertDialog.Builder(this).setTitle("Hatırlatmayı ilet")
-   .setItems(options.toTypedArray()){_,selected->
-    when(options[selected]){
-     "Yerel Wi-Fi ile gönder"->Thread{
-      val result=try{LanTransfer.send(this,r)}catch(e:Exception){"Wi-Fi iletim hatası: "+(e.message?:"Bağlantı yok")}
-      runOnUiThread{Toast.makeText(this,result,Toast.LENGTH_LONG).show()}
-     }.start()
-     "İnternet üzerinden gönder"->{
-      val field=EditText(this).apply{hint="Alıcının Time-ikiz kimliği";setSingleLine(true)}
-      AlertDialog.Builder(this).setTitle("Güvenilir alıcı")
-       .setMessage("Alıcı karşılıklı kişi ekleme ve iki anahtar parmak izi doğrulamasını tamamlamış olmalıdır.")
-       .setView(field).setPositiveButton("Gönder"){_,_->
-        val peer=field.text.toString().trim()
-        Thread{
-         val result=try{
-          InternetMessaging.send(this,peer,r)
-          "Şifreli mesaj sunucuya gönderildi; alıcı senkronizasyonunda teslim alınacak"
-         }catch(e:Exception){"İnternet iletim hatası: "+(e.message?:"İletilemedi")}
-         runOnUiThread{Toast.makeText(this,result,Toast.LENGTH_LONG).show()}
-        }.start()
-       }.setNegativeButton("Vazgeç",null).show()
-     }
-    }
-   }.show()
+  if(!LanTransfer.isPaired(this)){
+   Toast.makeText(this,"Önce iki cihazı aynı Wi-Fi ağında eşleştirin",Toast.LENGTH_LONG).show()
+   return
+  }
+  Thread{
+   val result=try{LanTransfer.send(this,r)}catch(e:Exception){"Wi-Fi iletim hatası: "+(e.message?:"Bağlantı yok")}
+   runOnUiThread{Toast.makeText(this,result,Toast.LENGTH_LONG).show()}
+  }.start()
  }
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
   super.onActivityResult(requestCode,resultCode,data)
