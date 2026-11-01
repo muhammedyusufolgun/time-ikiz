@@ -65,6 +65,7 @@ class MainActivity:Activity(){
  done.setOnClickListener{save()};root.addView(button("Yeni Ekle",0xffb9efb7.toInt()).apply{setOnClickListener{editing=null;date.text.clear();time.text.clear();input.text.clear();dateChosen=false;timeChosen=false;input.requestFocus();(getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(input,InputMethodManager.SHOW_IMPLICIT)}},LinearLayout.LayoutParams(-1,dp(52)))
  
 
+  root.addView(button("İnternet ayarları",0xffd6eaf8.toInt()).apply{setOnClickListener{internetSetupDialog()}},LinearLayout.LayoutParams(-1,dp(48)))
   root.addView(button("Rehberden kişi ekle ve eşleştir",0xffc8e6ff.toInt()).apply{setOnClickListener{lanPairDialog()}},LinearLayout.LayoutParams(-1,dp(48)))
   list=LinearLayout(this).apply{orientation=1};root.addView(list);root.addView(Space(this),LinearLayout.LayoutParams(1,dp(28)));root.addView(TextView(this).apply{text="Muhammed Yusuf OLGUN";gravity=Gravity.CENTER;textSize=12f;setTextColor(0xffaaaaaa.toInt())},LinearLayout.LayoutParams(-1,dp(35)));render()}
  private fun save():Reminder?{try{val dateRaw=date.text.toString().trim();val repeat=dateRaw.isEmpty();val d=if(repeat)Date() else {require(dateRaw.matches(Regex("\\d{2}\\.\\d{2}\\.\\d{4}"))){"Tarih GG.AA.YYYY olmalı"};fmt.apply{isLenient=false}.parse(dateRaw)?:throw Exception("Geçersiz tarih")};val raw=time.text.toString().trim();require(raw.matches(Regex("([01]\\d|2[0-3]):[0-5]\\d"))){"Saat SS:DD biçiminde olmalı"};require(input.text.toString().isNotBlank()){"Sesli mesaj boş olamaz"};val hm=raw;val t=clock.apply{isLenient=false}.parse(hm)?:throw Exception("Geçersiz saat");val cal=Calendar.getInstance().apply{time=d};val tc=Calendar.getInstance().apply{time=t};cal.set(Calendar.HOUR_OF_DAY,tc.get(Calendar.HOUR_OF_DAY));cal.set(Calendar.MINUTE,tc.get(Calendar.MINUTE));cal.set(Calendar.SECOND,0);cal.set(Calendar.MILLISECOND,0);if(!repeat && cal.timeInMillis<=System.currentTimeMillis())throw IllegalArgumentException("Gelecekte bir tarih ve saat girin")
@@ -147,6 +148,31 @@ class MainActivity:Activity(){
    }
   }
   handler.postDelayed(scan,1500L)
+ }
+ private fun internetSetupDialog(){
+  val layout=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(8),dp(16),dp(8))}
+  fun field(hintText:String)=EditText(this).apply{hint=hintText;setSingleLine(true);layout.addView(this)}
+  val server=field("HTTPS sunucu adresi")
+  val id=field("Cihaz kimliği (8-64 karakter)")
+  val peer=field("Diğer cihaz kimliği")
+  val encryption=field("Diğer cihazın şifreleme SHA-256 parmak izi")
+  val signing=field("Diğer cihazın imza SHA-256 parmak izi")
+  val actions=arrayOf("Cihaz kaydı","Kişi ekle","Anahtarları doğrula","Kimliğimi ve parmak izlerimi göster","Mesajları kontrol et")
+  AlertDialog.Builder(this).setTitle("Güvenli internet eşleştirme").setView(layout)
+   .setItems(actions){_,selected->
+    Thread{
+     val result=try{
+      when(selected){
+       0->{InternetMessaging.register(this,server.text.toString().trim(),id.text.toString().trim());"Cihaz kaydedildi"}
+       1->{InternetMessaging.add(this,peer.text.toString().trim());"Kişi eklendi; diğer cihaz da sizi eklemeli"}
+       2->{val p=peer.text.toString().trim();InternetMessaging.trustPeer(this,p,encryption.text.toString().trim());InternetMessaging.trustSigningPeer(this,p,signing.text.toString().trim());"Anahtarlar doğrulandı"}
+       3->"Kimlik: "+InternetMessaging.myId(this)+"\\nŞifreleme: "+InternetMessaging.myFingerprint()+"\\nİmza: "+InternetMessaging.mySigningFingerprint(this)
+       else->"Alınan yeni mesaj: "+InternetMessaging.sync(this)
+      }
+     }catch(e:Exception){"İşlem başarısız: "+e.message}
+     runOnUiThread{render();AlertDialog.Builder(this).setMessage(result).setPositiveButton("Kapat",null).show()}
+    }.start()
+   }.setNegativeButton("Vazgeç",null).show()
  }
  private fun sendDialog(r:Reminder){
   val options=mutableListOf<String>()
