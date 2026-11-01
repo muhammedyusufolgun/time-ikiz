@@ -47,6 +47,10 @@ object Store {
   try { ReminderWidget.refresh(c) } catch (e:Exception) { android.util.Log.w("TimeIkizStore","Widget refresh failed after successful save",e) }
   reminder
  }
+ fun incomingIds(c:Context):Set<Int> = synchronized(this) {
+  val a=JSONArray(c.getSharedPreferences("data",0).getString("items","[]") ?: "[]")
+  (0 until a.length()).mapNotNull { i -> val o=a.getJSONObject(i); if(o.has("source_message_id"))o.getInt("id") else null }.toSet()
+ }
  fun reconcileAlarms(c:Context) {
   all(c).forEach { reminder ->
    if(reminder.repeat || reminder.time>System.currentTimeMillis()) Alarms.plan(c,reminder)
