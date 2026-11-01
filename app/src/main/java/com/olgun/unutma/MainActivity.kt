@@ -19,7 +19,7 @@ class MainActivity:Activity(){
  private fun blackOutline():android.graphics.drawable.GradientDrawable=android.graphics.drawable.GradientDrawable().apply{setColor(Color.WHITE);setCornerRadius(dp(6).toFloat());setStroke(dp(1),Color.BLACK)}
  private fun redOutline():android.graphics.drawable.GradientDrawable=android.graphics.drawable.GradientDrawable().apply{setColor(Color.WHITE);setCornerRadius(dp(6).toFloat());setStroke(dp(1),Color.rgb(220,55,55))}
  private fun button(label:String,color:Int):Button=Button(this).apply{text=label;setTextColor(Color.BLACK);setAllCaps(false);setBackgroundTintList(android.content.res.ColorStateList.valueOf(color))}
- override fun onCreate(b:Bundle?){super.onCreate(b);window.statusBarColor=Color.rgb(244,246,248);window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);show();receiveSharedReminder(intent);handlePairRequest(intent);checkPermissions();try{Store.reconcileAlarms(this)}catch(e:Exception){android.util.Log.e("TimeIkiz", "Recovery failed", e)}}
+ override fun onCreate(b:Bundle?){super.onCreate(b);MessageSyncScheduler.schedule(applicationContext);window.statusBarColor=Color.rgb(244,246,248);window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);show();receiveSharedReminder(intent);handlePairRequest(intent);checkPermissions();try{Store.reconcileAlarms(this)}catch(e:Exception){android.util.Log.e("TimeIkiz", "Recovery failed", e)}}
  override fun onNewIntent(intent:Intent){super.onNewIntent(intent);setIntent(intent);receiveSharedReminder(intent);handlePairRequest(intent)}
  private fun handlePairRequest(intent:Intent?){
   if(intent?.action!="com.olgun.timeikiz.PAIR_REQUEST")return
@@ -73,10 +73,11 @@ class MainActivity:Activity(){
  private fun render(){
   list.removeAllViews()
   val now=System.currentTimeMillis()
+  val incomingIds=Store.incomingIds(this)
   val f=SimpleDateFormat("dd.MM.yyyy HH:mm",Locale("tr","TR"))
   Store.all(this).filter{it.repeat||it.time>=now||SpeechService.activeId(this)==it.id}.sortedWith(compareBy<Reminder>({Store.next(it,now)},{it.id})).forEach{r->
    val active=SpeechService.activeId(this)==r.id
-   val panel=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=android.graphics.drawable.GradientDrawable().apply{setColor(Color.WHITE);setStroke(dp(1),if(active && (SystemClock.uptimeMillis()/500)%2L==0L)Color.RED else Color.TRANSPARENT)}}
+   val panel=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=android.graphics.drawable.GradientDrawable().apply{setColor(if(r.id in incomingIds)Color.rgb(255,203,133) else Color.WHITE);setStroke(dp(1),if(active && (SystemClock.uptimeMillis()/500)%2L==0L)Color.RED else Color.TRANSPARENT)}}
    list.addView(panel,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)})
    val until=(Store.next(r,now)-now).coerceAtLeast(0)/1000
    val countdown="%02d Saat %02d Dakika %02d Saniye".format(until/3600,(until%3600)/60,until%60)
