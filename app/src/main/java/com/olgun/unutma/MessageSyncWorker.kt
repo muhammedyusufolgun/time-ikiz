@@ -5,6 +5,8 @@ import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.ExistingWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkerParameters
 import androidx.work.WorkManager
@@ -30,6 +32,14 @@ class MessageSyncWorker(context: Context, params: WorkerParameters) : CoroutineW
 }
 
 object MessageSyncScheduler {
+    fun syncSoon(context: Context) {
+        val request = OneTimeWorkRequestBuilder<MessageSyncWorker>()
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "time_ikiz_inbox_sync_once", ExistingWorkPolicy.KEEP, request
+        )
+    }
     fun schedule(context: Context) {
         val request = PeriodicWorkRequestBuilder<MessageSyncWorker>(15, TimeUnit.MINUTES)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -37,5 +47,6 @@ object MessageSyncScheduler {
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "time_ikiz_inbox_sync", ExistingPeriodicWorkPolicy.KEEP, request
         )
+        if (InternetMessaging.configured(context)) syncSoon(context)
     }
 }
