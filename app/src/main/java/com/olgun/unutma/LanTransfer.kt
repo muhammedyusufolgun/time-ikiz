@@ -34,6 +34,9 @@ object LanTransfer {
   return fresh
  }
  fun pairingCode(c:Context)=code(c)
+ private fun identity(token:String):String="sesli-"+MessageDigest.getInstance("SHA-256").digest(token.toByteArray(Charsets.UTF_8)).take(12).joinToString(""){"%02x".format(it.toInt() and 255)}
+ fun localIdentity(c:Context)=identity(code(c))
+ fun peerIdentity(c:Context)=prefs(c).getString("peer_code",null)?.let{identity(it)}?:""
  fun localIp():String=try{
   NetworkInterface.getNetworkInterfaces().toList().flatMap{it.inetAddresses.toList()}
    .filterIsInstance<Inet4Address>().firstOrNull{!it.isLoopbackAddress && it.isSiteLocalAddress}?.hostAddress?:"IP bulunamadı"
@@ -102,7 +105,9 @@ object LanTransfer {
      return
     }
     // A valid ciphertext alone is insufficient: accept reminders only from the paired endpoint.
-    require(isPaired(c) && socket.inetAddress.hostAddress==peer(c)){"Sender is not the paired device"}
+    require(isPaired(c)){"Sender is not paired"}
+    val currentIp=socket.inetAddress.hostAddress?:error("Missing sender IP")
+    if(currentIp!=peer(c))check(prefs(c).edit().putString("peer",currentIp).commit())
     val text=data.getString("text")
     val time=data.getLong("time")
     require(text.isNotBlank()&&text.length<=20000&&time>0)
@@ -126,7 +131,7 @@ object LanTransfer {
   }
  }
  fun send(c:Context,r:Reminder):String {
-  val ip=peer(c);require(ip.isNotBlank()){"Önce alıcıyı eşleştirin"}
+  val ip=LanDiscovery.pairedIp(c)?:peer(c);require(ip.isNotBlank()){"Önce alıcıyı eşleştirin"}
   val token=prefs(c).getString("peer_code",null)?:error("Eşleştirme kodu eksik")
   val plain=JSONObject().put("id",UUID.randomUUID().toString())
    .put("time",r.time).put("repeat",r.repeat).put("text",r.text).toString()
@@ -136,6 +141,7 @@ object LanTransfer {
    socket.getOutputStream().write((payload+"\n").toByteArray(Charsets.UTF_8))
    val reply=socket.getInputStream().bufferedReader(Charsets.UTF_8).readLine()
    check(reply=="OK"){"Alıcı aktarımı kabul etmedi"}
+   if(ip!=peer(c))check(prefs(c).edit().putString("peer",ip).commit())
   }
   return "Hatırlatma aynı ağdaki telefona aktarıldı"
  }
