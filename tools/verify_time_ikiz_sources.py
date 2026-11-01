@@ -53,8 +53,8 @@ check(src/"MainActivity.kt", "PairHandshake.request(", "Automatic pairing initia
 check(src/"LanTransfer.kt", "fun confirmPair(", "Reciprocal LAN confirmation missing")
 check(src/"PairHandshake.kt", "LanTransfer.confirmPair(", "Handshake does not confirm both devices")
 check(src/"MainActivity.kt", "LanDiscovery.advertise(applicationContext)", "Visible-app LAN advertising missing")
-check(src/"MainActivity.kt", "LanTransfer.stop()", "LAN listener cleanup missing")
-if "LanForegroundService" in activity: errors.append("Persistent LAN foreground service must not be started")
+check(src/"LanForegroundService.kt", "LanTransfer.stop()", "LAN listener cleanup missing")
+check(src/"MainActivity.kt", "startForegroundService(Intent(this,LanForegroundService::class.java))", "Background LAN service startup missing")
 if "lan_pair_requests" in (src/"PairHandshake.kt").read_text(): errors.append("Pairing notification must not be shown")
 if errors:
     for error in errors:
