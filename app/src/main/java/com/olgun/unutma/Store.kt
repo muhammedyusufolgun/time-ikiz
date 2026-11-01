@@ -53,7 +53,7 @@ object Store {
  }
  fun reconcileAlarms(c:Context) {
   all(c).forEach { reminder ->
-   if(reminder.repeat || reminder.time>System.currentTimeMillis()) Alarms.plan(c,reminder)
+   if(reminder.id !in incomingIds(c) && (reminder.repeat || reminder.time>System.currentTimeMillis())) Alarms.plan(c,reminder)
   }
  }
  fun next(r:Reminder,now:Long=System.currentTimeMillis()):Long { if(!r.repeat || r.time>now)return r.time; val cal=Calendar.getInstance().apply { timeInMillis=r.time }; val hour=cal.get(Calendar.HOUR_OF_DAY);val minute=cal.get(Calendar.MINUTE);cal.timeInMillis=now;cal.set(Calendar.HOUR_OF_DAY,hour);cal.set(Calendar.MINUTE,minute);cal.set(Calendar.SECOND,0);cal.set(Calendar.MILLISECOND,0);if(cal.timeInMillis<=now)cal.add(Calendar.DAY_OF_YEAR,1);return cal.timeInMillis }
