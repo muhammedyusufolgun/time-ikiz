@@ -52,7 +52,7 @@ class MainActivity:Activity(){
   }catch(e:Exception){Toast.makeText(this,"Geçersiz bağlantı",Toast.LENGTH_LONG).show()}
  }
  private fun show(){val scroll=ScrollView(this);scroll.isFillViewport=true;var pullStart=0f;scroll.setOnTouchListener{v,event->when(event.actionMasked){android.view.MotionEvent.ACTION_DOWN->pullStart=event.y;android.view.MotionEvent.ACTION_UP->if(scroll.scrollY==0 && event.y-pullStart>dp(75))render()};false};root=LinearLayout(this).apply{orientation=1;setPadding(dp(16),dp(38),dp(16),dp(12));setBackgroundColor(Color.rgb(248,250,252))};scroll.addView(root);setContentView(scroll)
- root.addView(TextView(this).apply{text="Time-ikiz • Zamanlı Sesli Mesaj";textSize=23f;setTextColor(Color.BLACK);gravity=Gravity.CENTER;setTypeface(null,1);setPadding(0,0,0,dp(20))})
+ root.addView(TextView(this).apply{text="Zamanlı Sesli Mesaj";textSize=23f;setTextColor(Color.BLACK);gravity=Gravity.CENTER;setTypeface(null,1);setPadding(0,0,0,dp(20))})
  val row=LinearLayout(this).apply{orientation=0};root.addView(row)
  date=EditText(this).apply{hint="Tarih: GG.AA.YYYY";setSingleLine(true);inputType=android.text.InputType.TYPE_CLASS_DATETIME or android.text.InputType.TYPE_DATETIME_VARIATION_DATE};time=EditText(this).apply{hint="Saat: SS:DD (isteğe bağlı)";setSingleLine(true);inputType=android.text.InputType.TYPE_CLASS_DATETIME or android.text.InputType.TYPE_DATETIME_VARIATION_TIME}
  date.background=blackOutline();time.background=blackOutline();date.setPadding(dp(8),0,dp(8),0);time.setPadding(dp(8),0,dp(8),0)
