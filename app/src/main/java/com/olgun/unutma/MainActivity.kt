@@ -99,24 +99,49 @@ class MainActivity:Activity(){
   catch(e:Exception){Toast.makeText(this,"Wi-Fi alımı başlatılamadı: "+(e.message?:""),Toast.LENGTH_LONG).show()}
  }
  private fun lanPairDialog(){
+  startLanService()
   try{startActivityForResult(Intent(Intent.ACTION_PICK,android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI),44)}
   catch(e:Exception){Toast.makeText(this,"Rehber açılamadı",Toast.LENGTH_LONG).show()}
  }
  private fun selectNearby(contact:String){
-  val found=LanDiscovery.nearby()
-  if(found.isEmpty()){
-   AlertDialog.Builder(this).setTitle("Cihaz bulunamadı").setMessage("İki telefonda Time-ikiz açık ve aynı Wi-Fi ağına bağlı olmalı. Cihazları yeniden aramak için tekrar deneyin.").setPositiveButton("Tamam",null).show()
-   return
+  startLanService()
+  val waiting=AlertDialog.Builder(this).setTitle("Time-ikiz cihazları aranıyor")
+   .setMessage("İki telefonda uygulamayı açın ve aynı Wi-Fi ağına bağlanın. Tarama yaklaşık 12 saniye sürebilir.")
+   .setNegativeButton("İptal",null).create()
+  waiting.show()
+  val started=SystemClock.uptimeMillis()
+  val scan=object:Runnable{
+   override fun run(){
+    if(!waiting.isShowing || isFinishing)return
+    val found=LanDiscovery.nearby()
+    if(found.isEmpty() && SystemClock.uptimeMillis()-started<12000L){
+     handler.postDelayed(this,1000L)
+     return
+    }
+    waiting.dismiss()
+    if(found.isEmpty()){
+     AlertDialog.Builder(this@MainActivity).setTitle("Cihaz bulunamadı")
+      .setMessage("Her iki telefonda Time-ikiz açık ve aynı Wi-Fi ağına bağlı olmalı. Mobil veri üzerinden farklı şehirlerde cihaz taraması bu sürümde henüz desteklenmiyor. Wi-Fi istemci izolasyonunu da kontrol edin.")
+      .setPositiveButton("Tekrar tara"){_,_->selectNearby(contact)}
+      .setNegativeButton("Kapat",null).show()
+     return
+    }
+    val names=found.map{it.first+" ("+it.second+")"}.toTypedArray()
+    AlertDialog.Builder(this@MainActivity).setTitle("$contact için Time-ikiz cihazı seç")
+     .setItems(names){_,which->
+      val chosen=found[which]
+      Thread{
+       val message=try{
+        if(PairHandshake.request(this@MainActivity,chosen.second)){
+         "Eşleştirme onaylandı; hatırlatma gönderebilirsiniz"
+        }else "Eşleştirme onaylanmadı veya zaman aşımına uğradı"
+       }catch(e:Exception){"Eşleştirme başarısız: "+(e.message?:"Bağlantı sorunu")}
+       runOnUiThread{Toast.makeText(this@MainActivity,message,Toast.LENGTH_LONG).show()}
+      }.start()
+     }.setNegativeButton("Vazgeç",null).show()
+   }
   }
-  val names=found.map{it.first}.toTypedArray()
-  AlertDialog.Builder(this).setTitle("$contact için yakındaki Time-ikiz cihazı").setItems(names){_,which->
-   val chosen=found[which]
-   Thread{
-    val message=try{if(PairHandshake.request(this,chosen.second)){runOnUiThread{startLanService()};"Eşleştirme onaylandı; hatırlatma gönderebilirsiniz"} else "Eşleştirme onaylanmadı veya zaman aşımına uğradı"}
-    catch(e:Exception){"Eşleştirme başarısız: "+(e.message?:"Bağlantı sorunu")}
-    runOnUiThread{Toast.makeText(this,message,Toast.LENGTH_LONG).show()}
-   }.start()
-  }.setNegativeButton("Vazgeç",null).show()
+  handler.postDelayed(scan,1500L)
  }
  private fun sendDialog(r:Reminder){
   if(LanTransfer.isPaired(this)){
