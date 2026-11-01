@@ -19,9 +19,17 @@ class ReminderWidget:AppWidgetProvider(){
    ids.forEach { id ->
     val v=RemoteViews(c.packageName,R.layout.widget)
     v.removeAllViews(R.id.reminder_rows)
-    if(reminders.isEmpty()) {v.setTextViewText(R.id.details,"Henüz yaklaşan alarm yok")}
+    if(reminders.isEmpty() && InstantMessage.all(c).isEmpty()) {v.setTextViewText(R.id.details,"Henüz yaklaşan alarm yok")}
     else {
      v.setTextViewText(R.id.details,"")
+     InstantMessage.all(c).forEach { (message,until) ->
+      val item=RemoteViews(c.packageName,R.layout.widget_row)
+      item.setInt(R.id.row_container,"setBackgroundColor",android.graphics.Color.rgb(191,234,255))
+      item.setChronometerCountDown(R.id.row_countdown,true)
+      item.setChronometer(R.id.row_countdown,android.os.SystemClock.elapsedRealtime()+(until-System.currentTimeMillis()).coerceAtLeast(0),null,true)
+      item.setTextViewText(R.id.row_message,"Anlık · "+message)
+      v.addView(R.id.reminder_rows,item)
+     }
      reminders.forEach { r ->
       val item=RemoteViews(c.packageName,R.layout.widget_row)
       item.setInt(R.id.row_container,"setBackgroundResource",if(SpeechService.activeId(c)==r.id && (android.os.SystemClock.uptimeMillis()/500)%2L==0L)R.drawable.widget_active else if(r.id in sentIds)R.drawable.widget_received else R.drawable.widget_normal)
