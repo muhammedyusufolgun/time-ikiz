@@ -65,7 +65,8 @@ class MainActivity:Activity(){
  done.setOnClickListener{save()}
  val primaryActions=LinearLayout(this).apply{orientation=0};root.addView(primaryActions)
  primaryActions.addView(button("Yeni Ekle",0xffb9efb7.toInt()).apply{setOnClickListener{editing=null;date.text.clear();time.text.clear();input.text.clear();dateChosen=false;timeChosen=false;input.requestFocus();(getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(input,InputMethodManager.SHOW_IMPLICIT)}},LinearLayout.LayoutParams(0,dp(52),1f))
- primaryActions.addView(button("Kişi",0xffc8e6ff.toInt()).apply{setOnClickListener{lanPairDialog()}},LinearLayout.LayoutParams(dp(92),dp(52)))
+ primaryActions.addView(button("Anlık",0xffbfeaff.toInt()).apply{setOnClickListener{sendInstantMessage()}},LinearLayout.LayoutParams(dp(68),dp(52)))
+ primaryActions.addView(button("Kişi",0xffffa64d.toInt()).apply{setOnClickListener{lanPairDialog()}},LinearLayout.LayoutParams(dp(92),dp(52)))
   list=LinearLayout(this).apply{orientation=1};root.addView(list);root.addView(Space(this),LinearLayout.LayoutParams(1,dp(28)));root.addView(TextView(this).apply{text="Muhammed Yusuf OLGUN";gravity=Gravity.CENTER;textSize=12f;setTextColor(0xffaaaaaa.toInt())},LinearLayout.LayoutParams(-1,dp(35)));render()}
  private fun save():Reminder?{try{val dateRaw=date.text.toString().trim();val repeat=dateRaw.isEmpty();val d=if(repeat)Date() else {require(dateRaw.matches(Regex("\\d{2}\\.\\d{2}\\.\\d{4}"))){"Tarih GG.AA.YYYY olmalı"};fmt.apply{isLenient=false}.parse(dateRaw)?:throw Exception("Geçersiz tarih")};val raw=time.text.toString().trim();require(raw.matches(Regex("([01]\\d|2[0-3]):[0-5]\\d"))){"Saat SS:DD biçiminde olmalı"};require(input.text.toString().isNotBlank()){"Sesli mesaj boş olamaz"};val hm=raw;val t=clock.apply{isLenient=false}.parse(hm)?:throw Exception("Geçersiz saat");val cal=Calendar.getInstance().apply{time=d};val tc=Calendar.getInstance().apply{time=t};cal.set(Calendar.HOUR_OF_DAY,tc.get(Calendar.HOUR_OF_DAY));cal.set(Calendar.MINUTE,tc.get(Calendar.MINUTE));cal.set(Calendar.SECOND,0);cal.set(Calendar.MILLISECOND,0);if(!repeat && cal.timeInMillis<=System.currentTimeMillis())throw IllegalArgumentException("Gelecekte bir tarih ve saat girin")
  val items=Store.all(this).toMutableList();val id=editing?:((items.maxOfOrNull{it.id}?:0)+1);require(id>0){"Hatırlatma kimliği geçersiz"};if(editing!=null)require(items.any{it.id==id}){"Düzenlenecek hatırlatma bulunamadı"};items.removeAll{it.id==id};val r=Reminder(id,cal.timeInMillis,input.text.toString().trim(),repeat);items.add(r);Store.save(this,items);Alarms.cancel(this,id);if(id !in Store.sentIds(this))Alarms.plan(this,r);editing=null;date.text.clear();time.text.clear();input.text.clear();(getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(input.windowToken,0);input.clearFocus();render();Toast.makeText(this,"Mesaj kaydedildi",Toast.LENGTH_SHORT).show();return r
@@ -75,6 +76,14 @@ class MainActivity:Activity(){
   val now=System.currentTimeMillis()
   val sentIds=Store.sentIds(this)
   val f=SimpleDateFormat("dd.MM.yyyy HH:mm",Locale("tr","TR"))
+  InstantMessage.all(this).forEach{(message,until)->
+   val seconds=((until-now+999)/1000).coerceAtLeast(0)
+   list.addView(TextView(this).apply{
+    text="Anlık · ${seconds} sn\n"+message
+    textSize=16f;setTextColor(Color.BLACK);setPadding(dp(12),dp(12),dp(12),dp(12))
+    setBackgroundColor(0xffbfeaff.toInt())
+   },LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)})
+  }
   Store.all(this).filter{it.repeat||it.time>=now||SpeechService.activeId(this)==it.id}.sortedWith(compareBy<Reminder>({Store.next(it,now)},{it.id})).forEach{r->
    val active=SpeechService.activeId(this)==r.id
    val panel=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=android.graphics.drawable.GradientDrawable().apply{setColor(if(r.id in sentIds)Color.rgb(255,210,155) else Color.WHITE);setStroke(dp(1),if(active && (SystemClock.uptimeMillis()/500)%2L==0L)Color.RED else Color.TRANSPARENT)}}
@@ -172,6 +181,18 @@ class MainActivity:Activity(){
      runOnUiThread{render();AlertDialog.Builder(this).setMessage(result).setPositiveButton("Kapat",null).show()}
     }.start()
    }.setNegativeButton("Vazgeç",null).show()
+ }
+ private fun sendInstantMessage(){
+  val text=input.text.toString().trim()
+  if(text.isBlank()){Toast.makeText(this,"Önce sesli mesajı yazın",Toast.LENGTH_LONG).show();return}
+  if(!LanTransfer.isPaired(this)){Toast.makeText(this,"Önce telefonları eşleştirin",Toast.LENGTH_LONG).show();return}
+  Thread{
+   val result=try{LanTransfer.sendInstant(this,text)}catch(e:Exception){"Anlık iletim hatası: "+(e.message?:"Bağlantı yok")}
+   runOnUiThread{
+    if(result=="Anlık mesaj iletildi"){InstantMessage.add(this,text);input.text.clear();render()}
+    Toast.makeText(this,result,Toast.LENGTH_LONG).show()
+   }
+  }.start()
  }
  private fun sendDialog(r:Reminder){
   if(!LanTransfer.isPaired(this)){
