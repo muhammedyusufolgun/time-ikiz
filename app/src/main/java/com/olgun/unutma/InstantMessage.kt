@@ -26,10 +26,13 @@ object InstantMessage {
   val a=JSONArray();items.forEach{(text,until)->a.put(JSONObject().put("text",text).put("until",until))}
   check(prefs(c).edit().putString("items",a.toString()).commit())
  }
- @Synchronized fun add(c:Context,text:String){
+ @Synchronized fun add(c:Context,text:String,id:String=java.util.UUID.randomUUID().toString()){
   require(text.isNotBlank() && text.length<=20000)
   val until=System.currentTimeMillis()+LIFE
-  val items=all(c).toMutableList();items.add(text to until);persist(c,items)
+  val items=all(c).toMutableList()
+  // A repeated delivery or tap must not create a second visible entry.
+  if(items.any{it.first==text})return
+  items.add(text to until);persist(c,items)
   ReminderWidget.refresh(c)
   val app=c.applicationContext
   handler.postDelayed({all(app);ReminderWidget.refresh(app)},LIFE+100L)
