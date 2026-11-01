@@ -65,19 +65,19 @@ class MainActivity:Activity(){
  done.setOnClickListener{save()}
  val primaryActions=LinearLayout(this).apply{orientation=0};root.addView(primaryActions)
  primaryActions.addView(button("Yeni Ekle",0xffb9efb7.toInt()).apply{setOnClickListener{editing=null;date.text.clear();time.text.clear();input.text.clear();dateChosen=false;timeChosen=false;input.requestFocus();(getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(input,InputMethodManager.SHOW_IMPLICIT)}},LinearLayout.LayoutParams(0,dp(52),1f))
- primaryActions.addView(button("Kişi",0xffc8e6ff.toInt()).apply{setOnClickListener{lanPairDialog()}},LinearLayout.LayoutParams(0,dp(52),1f))
+ primaryActions.addView(button("Kişi",0xffc8e6ff.toInt()).apply{setOnClickListener{lanPairDialog()}},LinearLayout.LayoutParams(dp(92),dp(52)))
   list=LinearLayout(this).apply{orientation=1};root.addView(list);root.addView(Space(this),LinearLayout.LayoutParams(1,dp(28)));root.addView(TextView(this).apply{text="Muhammed Yusuf OLGUN";gravity=Gravity.CENTER;textSize=12f;setTextColor(0xffaaaaaa.toInt())},LinearLayout.LayoutParams(-1,dp(35)));render()}
  private fun save():Reminder?{try{val dateRaw=date.text.toString().trim();val repeat=dateRaw.isEmpty();val d=if(repeat)Date() else {require(dateRaw.matches(Regex("\\d{2}\\.\\d{2}\\.\\d{4}"))){"Tarih GG.AA.YYYY olmalı"};fmt.apply{isLenient=false}.parse(dateRaw)?:throw Exception("Geçersiz tarih")};val raw=time.text.toString().trim();require(raw.matches(Regex("([01]\\d|2[0-3]):[0-5]\\d"))){"Saat SS:DD biçiminde olmalı"};require(input.text.toString().isNotBlank()){"Sesli mesaj boş olamaz"};val hm=raw;val t=clock.apply{isLenient=false}.parse(hm)?:throw Exception("Geçersiz saat");val cal=Calendar.getInstance().apply{time=d};val tc=Calendar.getInstance().apply{time=t};cal.set(Calendar.HOUR_OF_DAY,tc.get(Calendar.HOUR_OF_DAY));cal.set(Calendar.MINUTE,tc.get(Calendar.MINUTE));cal.set(Calendar.SECOND,0);cal.set(Calendar.MILLISECOND,0);if(!repeat && cal.timeInMillis<=System.currentTimeMillis())throw IllegalArgumentException("Gelecekte bir tarih ve saat girin")
- val items=Store.all(this).toMutableList();val id=editing?:((items.maxOfOrNull{it.id}?:0)+1);require(id>0){"Hatırlatma kimliği geçersiz"};if(editing!=null)require(items.any{it.id==id}){"Düzenlenecek hatırlatma bulunamadı"};items.removeAll{it.id==id};val r=Reminder(id,cal.timeInMillis,input.text.toString().trim(),repeat);items.add(r);Store.save(this,items);Alarms.cancel(this,id);if(id !in Store.incomingIds(this))Alarms.plan(this,r);editing=null;date.text.clear();time.text.clear();input.text.clear();(getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(input.windowToken,0);input.clearFocus();render();Toast.makeText(this,"Mesaj kaydedildi",Toast.LENGTH_SHORT).show();return r
+ val items=Store.all(this).toMutableList();val id=editing?:((items.maxOfOrNull{it.id}?:0)+1);require(id>0){"Hatırlatma kimliği geçersiz"};if(editing!=null)require(items.any{it.id==id}){"Düzenlenecek hatırlatma bulunamadı"};items.removeAll{it.id==id};val r=Reminder(id,cal.timeInMillis,input.text.toString().trim(),repeat);items.add(r);Store.save(this,items);Alarms.cancel(this,id);if(id !in Store.sentIds(this))Alarms.plan(this,r);editing=null;date.text.clear();time.text.clear();input.text.clear();(getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(input.windowToken,0);input.clearFocus();render();Toast.makeText(this,"Mesaj kaydedildi",Toast.LENGTH_SHORT).show();return r
  }catch(e:Exception){Toast.makeText(this,e.message?:"Tarih GG.AA.YYYY, saat SS:DD olmalı",Toast.LENGTH_LONG).show();return null}}
  private fun render(){
   list.removeAllViews()
   val now=System.currentTimeMillis()
-  val incomingIds=Store.incomingIds(this)
+  val sentIds=Store.sentIds(this)
   val f=SimpleDateFormat("dd.MM.yyyy HH:mm",Locale("tr","TR"))
   Store.all(this).filter{it.repeat||it.time>=now||SpeechService.activeId(this)==it.id}.sortedWith(compareBy<Reminder>({Store.next(it,now)},{it.id})).forEach{r->
    val active=SpeechService.activeId(this)==r.id
-   val panel=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=android.graphics.drawable.GradientDrawable().apply{setColor(if(r.id in incomingIds)Color.rgb(255,210,155) else Color.WHITE);setStroke(dp(1),if(active && (SystemClock.uptimeMillis()/500)%2L==0L)Color.RED else Color.TRANSPARENT)}}
+   val panel=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(12),dp(12),dp(12));background=android.graphics.drawable.GradientDrawable().apply{setColor(if(r.id in sentIds)Color.rgb(255,210,155) else Color.WHITE);setStroke(dp(1),if(active && (SystemClock.uptimeMillis()/500)%2L==0L)Color.RED else Color.TRANSPARENT)}}
    list.addView(panel,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(10)})
    val until=(Store.next(r,now)-now).coerceAtLeast(0)/1000
    val countdown="%02d Saat %02d Dakika %02d Saniye".format(until/3600,(until%3600)/60,until%60)
@@ -94,7 +94,7 @@ class MainActivity:Activity(){
  }
  override fun onResume(){super.onResume();startLanService();try{Store.reconcileAlarms(this)}catch(e:Exception){android.util.Log.e("TimeIkizAlarm","Resume alarm reconciliation failed",e)};refreshTask?.let{handler.removeCallbacks(it)};val tick=object:Runnable{override fun run(){render();handler.postDelayed(this,500)}};refreshTask=tick;handler.post(tick)}
  override fun onPause(){refreshTask?.let{handler.removeCallbacks(it)};refreshTask=null;super.onPause()}
- override fun onStop(){LanDiscovery.stop(applicationContext);LanTransfer.stop();super.onStop()}
+ override fun onStop(){super.onStop()}
 
  private fun startLanService(){
   try{
@@ -180,7 +180,7 @@ class MainActivity:Activity(){
   }
   Thread{
    val result=try{LanTransfer.send(this,r)}catch(e:Exception){"Wi-Fi iletim hatası: "+(e.message?:"Bağlantı yok")}
-   runOnUiThread{Toast.makeText(this,result,Toast.LENGTH_LONG).show()}
+   runOnUiThread{if(result=="Hatırlatma aynı ağdaki telefona aktarıldı"){Store.markSent(this,r.id);startService(Intent(this,SpeechService::class.java).setAction(SpeechService.STOP));render()};Toast.makeText(this,result,Toast.LENGTH_LONG).show()}
   }.start()
  }
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?){
