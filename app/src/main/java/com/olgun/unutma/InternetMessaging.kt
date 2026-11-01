@@ -93,6 +93,7 @@ object InternetMessaging {
    req(c,"/register",JSONObject().put("id",id).put("token",token).put("public_key",enc(rsa().public.encoded)).put("signing_public_key",enc(signPublic(c))),false)
   }catch(e:Exception){prefs(c).edit().putString("server",old).commit();throw e}
   check(prefs(c).edit().putString("id",id).putString("token",token).commit())
+  MessageSyncScheduler.schedule(c)
  }
  fun add(c:Context,peer:String)=req(c,"/contact/add",JSONObject().put("peer",peer.also{path(it)}))
  fun delete(c:Context,peer:String):JSONObject {
