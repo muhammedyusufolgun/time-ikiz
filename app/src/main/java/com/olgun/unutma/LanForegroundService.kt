@@ -21,9 +21,9 @@ class LanForegroundService:Service(){
   }
   getSharedPreferences("lan_service",0).edit().putBoolean("enabled",true).apply()
   val nm=getSystemService(NotificationManager::class.java)
-  nm.createNotificationChannel(NotificationChannel("lan_service","Time-ikiz Wi-Fi",NotificationManager.IMPORTANCE_LOW))
+  nm.createNotificationChannel(NotificationChannel("lan_service","Sesli-Mesaj Wi-Fi",NotificationManager.IMPORTANCE_LOW))
   val stop=PendingIntent.getService(this,502,Intent(this,LanForegroundService::class.java).setAction(STOP),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-  val n=Notification.Builder(this,"lan_service").setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("Time-ikiz Wi-Fi alımı").setContentText("Yerel ağ bağlantısı açık").addAction(android.R.drawable.ic_media_pause,"Durdur",stop).setOngoing(true).build()
+  val n=Notification.Builder(this,"lan_service").setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("Sesli-Mesaj Wi-Fi alımı").setContentText("Yerel ağ bağlantısı açık").addAction(android.R.drawable.ic_media_pause,"Durdur",stop).setOngoing(true).build()
   if(Build.VERSION.SDK_INT>=29)startForeground(501,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE) else startForeground(501,n)
   LanTransfer.start(applicationContext)
   LanDiscovery.advertise(applicationContext)
