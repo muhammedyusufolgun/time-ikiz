@@ -19,7 +19,7 @@ class MainActivity:Activity(){
  private fun blackOutline():android.graphics.drawable.GradientDrawable=android.graphics.drawable.GradientDrawable().apply{setColor(Color.WHITE);setCornerRadius(dp(6).toFloat());setStroke(dp(1),Color.BLACK)}
  private fun redOutline():android.graphics.drawable.GradientDrawable=android.graphics.drawable.GradientDrawable().apply{setColor(Color.WHITE);setCornerRadius(dp(6).toFloat());setStroke(dp(1),Color.rgb(220,55,55))}
  private fun button(label:String,color:Int):Button=Button(this).apply{text=label;setTextColor(Color.BLACK);setAllCaps(false);setBackgroundTintList(android.content.res.ColorStateList.valueOf(color))}
- override fun onCreate(b:Bundle?){super.onCreate(b);window.statusBarColor=Color.rgb(244,246,248);window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);show();if(LanForegroundService.enabled(this))startLanService();receiveSharedReminder(intent);handlePairRequest(intent);checkPermissions();try{Store.reconcileAlarms(this)}catch(e:Exception){android.util.Log.e("TimeIkiz", "Recovery failed", e)}}
+ override fun onCreate(b:Bundle?){super.onCreate(b);window.statusBarColor=Color.rgb(244,246,248);window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);show();receiveSharedReminder(intent);handlePairRequest(intent);checkPermissions();try{Store.reconcileAlarms(this)}catch(e:Exception){android.util.Log.e("TimeIkiz", "Recovery failed", e)}}
  override fun onNewIntent(intent:Intent){super.onNewIntent(intent);setIntent(intent);receiveSharedReminder(intent);handlePairRequest(intent)}
  private fun handlePairRequest(intent:Intent?){
   if(intent?.action!="com.olgun.timeikiz.PAIR_REQUEST")return
@@ -28,7 +28,7 @@ class MainActivity:Activity(){
    .setMessage("Yakındaki bir cihaz eşleşmek istiyor. İsteği gerçekten tanıdığınız kişinin gönderdiğini doğrulayın.")
    .setPositiveButton("Onayla"){_,_->
     val accepted=PairHandshake.approve(this,id)
-    if(accepted)startLanService()
+    
     Toast.makeText(this,if(accepted)"Eşleştirme onaylandı" else "İsteğin süresi doldu",Toast.LENGTH_LONG).show()
    }.setNegativeButton("Reddet"){_,_->PairHandshake.reject(id)}.show()
  }
@@ -91,12 +91,15 @@ class MainActivity:Activity(){
    actions.addView(button("Durdur",0xffe2e2e2.toInt()).apply{setOnClickListener{(getSystemService(VIBRATOR_SERVICE) as android.os.Vibrator).vibrate(android.os.VibrationEffect.createOneShot(100,android.os.VibrationEffect.DEFAULT_AMPLITUDE));startService(Intent(this@MainActivity,SpeechService::class.java).setAction(SpeechService.STOP));render()}},LinearLayout.LayoutParams(0,dp(46),1f))
   }
  }
- override fun onResume(){super.onResume();try{Store.reconcileAlarms(this)}catch(e:Exception){android.util.Log.e("TimeIkizAlarm","Resume alarm reconciliation failed",e)};refreshTask?.let{handler.removeCallbacks(it)};val tick=object:Runnable{override fun run(){render();handler.postDelayed(this,500)}};refreshTask=tick;handler.post(tick)}
- override fun onPause(){refreshTask?.let{handler.removeCallbacks(it)};refreshTask=null;super.onPause()}
+ override fun onResume(){super.onResume();startLanService();try{Store.reconcileAlarms(this)}catch(e:Exception){android.util.Log.e("TimeIkizAlarm","Resume alarm reconciliation failed",e)};refreshTask?.let{handler.removeCallbacks(it)};val tick=object:Runnable{override fun run(){render();handler.postDelayed(this,500)}};refreshTask=tick;handler.post(tick)}
+ override fun onPause(){refreshTask?.let{handler.removeCallbacks(it)};refreshTask=null;super.onPause()}\n override fun onStop(){LanDiscovery.stop(applicationContext);LanTransfer.stop();super.onStop()}
 
  private fun startLanService(){
-  try{getSharedPreferences("lan_service",0).edit().putBoolean("enabled",true).apply();startForegroundService(Intent(this,LanForegroundService::class.java))}
-  catch(e:Exception){Toast.makeText(this,"Wi-Fi alımı başlatılamadı: "+(e.message?:""),Toast.LENGTH_LONG).show()}
+  try{
+   LanTransfer.start(applicationContext)
+   LanDiscovery.advertise(applicationContext)
+   LanDiscovery.discover(applicationContext)
+  }catch(e:Exception){Toast.makeText(this,"Yerel ağ taraması başlatılamadı: "+(e.message?:""),Toast.LENGTH_LONG).show()}
  }
  private fun lanPairDialog(){
   startLanService()
