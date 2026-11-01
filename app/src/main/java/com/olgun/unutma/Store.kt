@@ -11,14 +11,17 @@ object Store {
   val prefs=c.getSharedPreferences("data",Context.MODE_PRIVATE)
   val old=JSONArray(prefs.getString("items","[]") ?: "[]")
   val sources=mutableMapOf<Int,String>()
+  val sent=mutableSetOf<Int>()
   for(i in 0 until old.length()) {
    val obj=old.getJSONObject(i)
    if(obj.has("source_message_id"))sources[obj.getInt("id")]=obj.getString("source_message_id")
+   if(obj.optBoolean("sent",false))sent.add(obj.getInt("id"))
   }
   val array=JSONArray()
   items.forEach { r ->
    val obj=JSONObject().put("id",r.id).put("time",r.time).put("text",r.text).put("repeat",r.repeat)
    sources[r.id]?.let { obj.put("source_message_id",it) }
+   if(r.id in sent)obj.put("sent",true)
    array.put(obj)
   }
   check(prefs.edit().putString("items",array.toString()).commit()) { "Hatırlatmalar kalıcı olarak kaydedilemedi" }
@@ -47,13 +50,25 @@ object Store {
   try { ReminderWidget.refresh(c) } catch (e:Exception) { android.util.Log.w("TimeIkizStore","Widget refresh failed after successful save",e) }
   reminder
  }
+ fun markSent(c:Context,id:Int)=synchronized(this) {
+  val prefs=c.getSharedPreferences("data",Context.MODE_PRIVATE)
+  val a=JSONArray(prefs.getString("items","[]") ?: "[]")
+  for(i in 0 until a.length())if(a.getJSONObject(i).getInt("id")==id)a.getJSONObject(i).put("sent",true)
+  check(prefs.edit().putString("items",a.toString()).commit())
+  Alarms.cancel(c,id)
+  try{ReminderWidget.refresh(c)}catch(_:Exception){}
+ }
+ fun sentIds(c:Context):Set<Int> = synchronized(this){
+  val a=JSONArray(c.getSharedPreferences("data",0).getString("items","[]") ?: "[]")
+  (0 until a.length()).mapNotNull{ i -> val o=a.getJSONObject(i);if(o.optBoolean("sent",false))o.getInt("id") else null }.toSet()
+ }
  fun incomingIds(c:Context):Set<Int> = synchronized(this) {
   val a=JSONArray(c.getSharedPreferences("data",0).getString("items","[]") ?: "[]")
   (0 until a.length()).mapNotNull { i -> val o=a.getJSONObject(i); if(o.has("source_message_id"))o.getInt("id") else null }.toSet()
  }
  fun reconcileAlarms(c:Context) {
   all(c).forEach { reminder ->
-   if(reminder.id !in incomingIds(c) && (reminder.repeat || reminder.time>System.currentTimeMillis())) Alarms.plan(c,reminder)
+   if(reminder.id !in sentIds(c) && (reminder.repeat || reminder.time>System.currentTimeMillis())) Alarms.plan(c,reminder)
   }
  }
  fun next(r:Reminder,now:Long=System.currentTimeMillis()):Long { if(!r.repeat || r.time>now)return r.time; val cal=Calendar.getInstance().apply { timeInMillis=r.time }; val hour=cal.get(Calendar.HOUR_OF_DAY);val minute=cal.get(Calendar.MINUTE);cal.timeInMillis=now;cal.set(Calendar.HOUR_OF_DAY,hour);cal.set(Calendar.MINUTE,minute);cal.set(Calendar.SECOND,0);cal.set(Calendar.MILLISECOND,0);if(cal.timeInMillis<=now)cal.add(Calendar.DAY_OF_YEAR,1);return cal.timeInMillis }
