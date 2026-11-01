@@ -44,10 +44,9 @@ object PairHandshake {
     putExtra("pair_id",id)
     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
    }
-   val manager=c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-   manager.createNotificationChannel(NotificationChannel("lan_pair_requests","Time-ikiz eşleştirme",NotificationManager.IMPORTANCE_HIGH))
-   val pending=PendingIntent.getActivity(c,id.hashCode(),intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-   manager.notify(id.hashCode(),Notification.Builder(c,"lan_pair_requests").setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("Time-ikiz eşleştirme isteği").setContentText("Onaylamak veya reddetmek için dokunun").setContentIntent(pending).setAutoCancel(true).build())
+   // Display the approval request inside the open app; no notification-bar pairing prompt.
+   try { c.startActivity(intent) }
+   catch(e:Exception) { android.util.Log.w("TimeIkizPair","Could not show in-app pairing request",e) }
    s.getOutputStream().write("PENDING\n".toByteArray())
   }else{
    val record=requests[id]
