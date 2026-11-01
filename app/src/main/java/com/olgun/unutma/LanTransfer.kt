@@ -108,6 +108,13 @@ object LanTransfer {
     require(isPaired(c)){"Sender is not paired"}
     val currentIp=socket.inetAddress.hostAddress?:error("Missing sender IP")
     if(currentIp!=peer(c))check(prefs(c).edit().putString("peer",currentIp).commit())
+    if(data.optString("type")=="instant"){
+     val instantText=data.getString("text")
+     InstantMessage.add(c,instantText)
+     try{c.startForegroundService(android.content.Intent(c,SpeechService::class.java).putExtra("message",instantText).putExtra("id",-1))}catch(e:Exception){Log.w("TimeIkizLAN","Instant speech start failed",e)}
+     socket.getOutputStream().write("OK\n".toByteArray(Charsets.UTF_8))
+     return
+    }
     val text=data.getString("text")
     val time=data.getLong("time")
     require(text.isNotBlank()&&text.length<=20000&&time>0)
@@ -129,6 +136,24 @@ object LanTransfer {
    socket.getOutputStream().write((payload+"\n").toByteArray(Charsets.UTF_8))
    return socket.getInputStream().bufferedReader(Charsets.UTF_8).readLine()=="OK"
   }
+ }
+ fun sendInstant(c:Context,text:String):String {
+  require(text.isNotBlank() && text.length<=20000){"Mesaj boş olamaz"}
+  val target=resolvePeer(c)
+  val token=prefs(c).getString("peer_code",null)?:error("Eşleştirme kodu eksik")
+  val payload=encrypt(token,JSONObject().put("type","instant").put("text",text).toString()).toString()
+  Socket().use{socket->
+   socket.connect(InetSocketAddress(target,PORT),5000);socket.soTimeout=6000
+   socket.getOutputStream().write((payload+"\n").toByteArray(Charsets.UTF_8))
+   check(socket.getInputStream().bufferedReader(Charsets.UTF_8).readLine()=="OK"){"Alıcı mesajı kabul etmedi"}
+  }
+  if(target!=peer(c))check(prefs(c).edit().putString("peer",target).commit())
+  return "Anlık mesaj iletildi"
+ }
+ private fun resolvePeer(c:Context):String {
+  var ip=LanDiscovery.pairedIp(c)
+  if(ip==null){LanDiscovery.discover(c);for(i in 0 until 6){Thread.sleep(500);ip=LanDiscovery.pairedIp(c);if(ip!=null)break}}
+  return ip?:peer(c).takeIf{it.isNotBlank()}?:error("Önce alıcıyı eşleştirin")
  }
  fun send(c:Context,r:Reminder):String {
   var ip=LanDiscovery.pairedIp(c)
