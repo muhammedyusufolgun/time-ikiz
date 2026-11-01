@@ -41,7 +41,9 @@ check(root/"app/build.gradle.kts", 'applicationId = "com.olgun.timeikiz"', "Dist
 if "android.permission.RECEIVE_SMS" in (root/"app/src/main/AndroidManifest.xml").read_text():
     errors.append("Sensitive SMS permission must not be present")
 check(src/"LanTransfer.kt", "AES/GCM/NoPadding", "Missing authenticated LAN encryption")
-check(src/"LanTransfer.kt", "socket.inetAddress.hostAddress==peer(c)", "Paired sender endpoint check missing")
+check(src/"LanTransfer.kt", "require(isPaired(c))", "Paired sender verification missing")
+check(src/"LanTransfer.kt", "decrypt(code(c),envelope)", "Authenticated paired message decryption missing")
+check(src/"LanTransfer.kt", "putString(\"peer\",currentIp)", "Authenticated peer IP refresh missing")
 if "ACTION_SENDTO" in activity or "smsto:" in activity: errors.append("SMS sharing fallback must not be present")
 if "Store.save(this@MainActivity,Store.all(this@MainActivity).filterNot{it.id==r.id})" not in activity: errors.append("Local-only reminder deletion missing")
 check(src/"MainActivity.kt", "LanTransfer.send(this,r)", "LAN send not connected")
